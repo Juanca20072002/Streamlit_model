@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=C:\Users\afeli\Downloads\Innovasic model_V1\myenv
+set VIRTUAL_ENV=C:\Users\afeli\OneDrive\Escritorio\Innovasic model_V1\myenv
 
 if not defined PROMPT set PROMPT=$P$G
 
