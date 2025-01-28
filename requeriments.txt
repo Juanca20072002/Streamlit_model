@@ -1,3 +1,4 @@
 streamlit
 pandas
-pickle5  
+pickle5
+joblib  
