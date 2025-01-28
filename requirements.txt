@@ -3,6 +3,7 @@ streamlit
 pandas
 numpy
 pyod
+combo
 plotly
 streamlit-lottie
 requests
