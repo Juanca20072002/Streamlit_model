@@ -1,4 +1,11 @@
 joblib
 streamlit
 pandas
-  
+numpy
+pyod
+plotly
+streamlit-lottie
+requests
+scikit-learn
+streamlit-option-menu
+matplotlib
