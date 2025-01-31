@@ -12,5 +12,5 @@ streamlit-option-menu
 matplotlib
 
 # packages.txt
-wireshark-common=3.6.24-0
-tshark=3.6.24-0g
+wireshark-common
+tshark
