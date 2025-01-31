@@ -11,6 +11,3 @@ scikit-learn
 streamlit-option-menu
 matplotlib
 
-# packages.txt
-wireshark-common
-tshark

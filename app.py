@@ -14,9 +14,6 @@ from streamlit_option_menu import option_menu
 import time
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_auc_score, roc_curve
-from subprocess import PIPE, Popen
-import shlex
-import os
 
 # Pestaña de la página
 st.set_page_config(
@@ -351,121 +348,6 @@ def show_dashboard_page():
             ('Externas', 'Internas'),
             help="Cada modelo utiliza diferentes técnicas para detectar anomalías"
         )
-        
-        
-        ## tshark -i Wi-Fi -l -c 10 -T fields -E separator=/t -e frame.time_delta -e _ws.col.Protocol -e ip.src -e ip.dst -e arp.src.proto_ipv4 -e arp.dst.proto_ipv4 -e ipv6.src -e ipv6.dst -e eth.src -e eth.dst -e tcp.srcport -e tcp.dstport -e udp.srcport -e udp.dstport -e frame.len -e udp.length -e ip.ttl -e icmp.type -e ip.dsfield.dscp -e ip.flags.rb -e ip.flags.df -e ip.flags.mf -e tcp.flags.res -e tcp.flags.ns -e tcp.flags.cwr -e tcp.flags.ecn -e tcp.flags.urg -e tcp.flags.ack -e tcp.flags.push -e tcp.flags.reset -e tcp.flags.syn -e tcp.flags.fin -e ip.version -e frame.time_epoch
-
-      
-        # Definir el comando para capturar paquetes con Tshark
-        comm_arg = "tshark -i Wi-Fi -l -c 100 -T fields -E separator=/t " \
-                "-e frame.time_delta -e _ws.col.Protocol -e ip.src -e ip.dst " \
-                "-e arp.src.proto_ipv4 -e arp.dst.proto_ipv4 -e ipv6.src -e ipv6.dst " \
-                "-e eth.src -e eth.dst -e tcp.srcport -e tcp.dstport -e udp.srcport " \
-                "-e udp.dstport -e frame.len -e udp.length -e ip.ttl -e icmp.type " \
-                "-e ip.dsfield.dscp -e ip.flags.rb -e ip.flags.df -e ip.flags.mf " \
-                "-e tcp.flags.res -e tcp.flags.ns -e tcp.flags.cwr -e tcp.flags.ecn " \
-                "-e tcp.flags.urg -e tcp.flags.ack -e tcp.flags.push -e tcp.flags.reset " \
-                "-e tcp.flags.syn -e tcp.flags.fin -e ip.version -e frame.time_epoch"
-
-        comm_arg = shlex.split(comm_arg)
-
-        # Función para capturar paquetes
-        def capturing_packets(comm_arg):
-            process = Popen(comm_arg, stdout=PIPE, stderr=PIPE, text=True)
-            return process
-
-        # Función para transformar los paquetes en el formato correcto
-        def type_packet(packet_):
-            if len(packet_) < 34:  # Rellenar con valores vacíos si falta información
-                packet_ += [''] * (34 - len(packet_))
-
-            # Mapeo de ARP al campo IP src y dst
-            if packet_[1] == 'ARP':
-                packet_[2] = packet_[4]  # ip.src <- arp.src.proto_ipv4
-                packet_[3] = packet_[5]  # ip.dst <- arp.dst.proto_ipv4
-
-            # Mapeo de IPv6 al campo IP src y dst
-            if packet_[32] == '6':
-                packet_[2] = packet_[6]  # ip.src <- ipv6.src
-                packet_[3] = packet_[7]  # ip.dst <- ipv6.dst
-
-            # Mapeo de UDP a puertos src y dst
-            if packet_[1] == 'UDP':
-                packet_[10] = packet_[12]  # tcp.srcport <- udp.srcport
-                packet_[11] = packet_[13]  # tcp.dstport <- udp.dstport
-
-            # Reemplazo de comas por puntos en ciertos campos
-            for index in [16, 18, 19, 20, 21]:
-                if packet_[index]:
-                    packet_[index] = packet_[index].replace(',', '.')
-
-            # Estructura del paquete ordenado
-            ordered_packet = [
-                packet_[0], packet_[1], packet_[2], packet_[3], packet_[10], packet_[11], packet_[14],
-                packet_[15], packet_[16], packet_[17], packet_[18], packet_[19], packet_[20], packet_[21],
-                packet_[22], packet_[23], packet_[24], packet_[25], packet_[26], packet_[27], packet_[28],
-                packet_[29], packet_[30], packet_[31], packet_[33]
-            ]
-
-            fieldnames = [
-                'delta_time', 'protocols', 'ip_src', 'ip_dst', 'tcp_srcport', 'tcp_dstport', 'frame_len',
-                'udp_length', 'ip_ttl', 'icmp_type', 'ip_dscp', 'ip_flags_rb', 'ip_flags_df', 'ip_flags_mf',
-                'tcp_flags_res', 'tcp_flags_ns', 'tcp_flags_cwr', 'tcp_flags_ecn', 'tcp_flags_urg',
-                'tcp_flags_ack', 'tcp_flags_push', 'tcp_flags_reset', 'tcp_flags_syn', 'tcp_flags_fin',
-                'frame_time_epoch'
-            ]
-
-            return {fieldnames[i]: [ordered_packet[i]] for i in range(len(fieldnames))}
-
-        # Función para agregar los paquetes al DataFrame
-        def packet_df(type_packet, df):
-            if df is None:
-                df = pd.DataFrame(type_packet)
-            else:
-                df = pd.concat([df, pd.DataFrame(type_packet)], axis=0, ignore_index=True)
-            return df
-
-        # Función para guardar los paquetes en CSV
-        def save_packet_csv(df, path):
-            df.to_csv(path, index=False)
-            st.success(f"✅ Archivo guardado en {path}")
-
-        # Streamlit UI
-        st.title("🔍 Captura y Análisis de Tráfico de Red")
-
-        traffic_method = st.selectbox(
-            "📌 Seleccione el método de tráfico",
-            ('Iniciar captura de paquetes', 'Abrir captura de paquetes pcap')
-        )
-
-        df = None  # Inicializamos el DataFrame
-
-        if traffic_method == 'Iniciar captura de paquetes':
-            if st.button("🚀 Iniciar Captura"):
-                process = capturing_packets(comm_arg)
-                st.write("📡 Capturando paquetes...")
-
-                for _ in range(100):  # Capturar 100 paquetes
-                    packet_str = process.stdout.readline().strip()
-                    if packet_str:
-                        packet_list = packet_str.split("\t")  # Separar los datos por tabulación
-                        type_packet_data = type_packet(packet_list)  # Convertir a estructura correcta
-                        df = packet_df(type_packet_data, df)  # Agregar al DataFrame
-
-                process.terminate()
-                st.success("✅ Captura finalizada.")
-
-        if df is not None:
-            st.write("📊 **Paquetes capturados:**")
-            st.dataframe(df)
-
-            if st.button("💾 Guardar en CSV"):
-                save_packet_csv(df, "captura_paquetes.csv")
-
-        elif traffic_method == 'Abrir captura de paquetes pcap':
-            uploaded_file = st.file_uploader("📂 Suba un archivo .pcap", type=["pcap"])
-            if uploaded_file is not None:
-                st.success(f"Archivo {uploaded_file.name} subido correctamente.")
         
         
         
